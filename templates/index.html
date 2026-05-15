@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>OFICINA WVL</title>
+
+    <link rel="manifest" href="/static/manifest.json">
+
+    <meta name="theme-color" content="#111111">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <meta name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent">
+
+    <meta name="apple-mobile-web-app-title"
+          content="Oficina WVL">
+
+    <link rel="apple-touch-icon"
+          href="/static/logo.png">
+
+    <link rel="stylesheet"
+          href="/static/style.css">
+</head>
+
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+
+        <img src="/static/logo.png"
+             class="logo">
+
+        <h1>OFICINA WVL</h1>
+
+        <button onclick="novo()">
+            Novo Orçamento
+        </button>
+
+        <button onclick="abrirHistorico()">
+            Histórico
+        </button>
+
+        <button class="green"
+                onclick="gerarPDF()">
+            Gerar PDF
+        </button>
+
+    </aside>
+
+    <main class="main">
+
+        <h2>SISTEMA DE ORÇAMENTO</h2>
+
+        <div class="card">
+
+            <div class="grid">
+
+                <input id="data"
+                       type="date">
+
+                <input id="cliente"
+                       placeholder="Cliente">
+
+                <input id="veiculo"
+                       placeholder="Veículo">
+
+                <input id="placa"
+                       placeholder="Placa">
+
+                <input id="telefone"
+                       placeholder="Telefone">
+
+            </div>
+
+        </div>
+
+        <div class="card">
+
+            <h3 class="verde">
+                MÃO DE OBRA
+            </h3>
+
+            <textarea id="mao"></textarea>
+
+            <input id="valor_mao"
+                   type="number"
+                   placeholder="Valor mão de obra">
+
+        </div>
+
+        <div class="card">
+
+            <h3 class="azul">
+                PEÇAS
+            </h3>
+
+            <textarea id="peca"></textarea>
+
+            <input id="valor_peca"
+                   type="number"
+                   placeholder="Valor peças">
+
+        </div>
+
+        <button class="green full"
+                onclick="adicionarItem()">
+            Adicionar
+        </button>
+
+        <div class="card">
+
+            <h3>ITENS ADICIONADOS</h3>
+
+            <div id="lista"></div>
+
+        </div>
+
+        <div class="total"
+             id="total">
+             TOTAL: R$ 0.00
+        </div>
+
+    </main>
+
+</div>
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>

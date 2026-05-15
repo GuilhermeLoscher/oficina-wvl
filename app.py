@@ -10,7 +10,7 @@ app = Flask(__name__)
 APP_NOME = "OFICINA WVL"
 
 # ======================================
-# PASTA
+# PASTA PDF
 # ======================================
 
 if not os.path.exists("orcamentos"):
@@ -60,7 +60,7 @@ def home():
     return render_template("index.html")
 
 # ======================================
-# PDF (ESTILO IGUAL AO ORIGINAL TKINTER)
+# GERAR PDF
 # ======================================
 
 @app.route("/gerar_pdf", methods=["POST"])
@@ -84,148 +84,51 @@ def gerar_pdf():
 
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=15)
 
         validade = (datetime.now() + timedelta(days=7)).strftime("%d/%m/%Y")
 
-        # ======================================
-        # LOGO
-        # ======================================
+        pdf.set_font("Arial", "B", 18)
+        pdf.cell(190, 10, APP_NOME, ln=True, align="C")
 
-        if os.path.exists("static/logo.png"):
-            pdf.image("static/logo.png", x=12, y=10, w=28)
-
-        pdf.set_xy(45, 12)
-
-        pdf.set_font("Arial", "B", 22)
-        pdf.set_text_color(40, 40, 40)
-        pdf.cell(140, 10, APP_NOME, ln=True, align="C")
-
-        pdf.set_x(45)
-        pdf.set_font("Arial", "", 11)
-        pdf.set_text_color(90, 90, 90)
-        pdf.cell(140, 7, "ORCAMENTO DE SERVICOS MECANICOS", ln=True, align="C")
-
-        pdf.set_x(45)
-        pdf.cell(140, 7, f"Validade ate {validade}", ln=True, align="C")
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(190, 8, "ORCAMENTO DE SERVICOS MECANICOS", ln=True, align="C")
+        pdf.cell(190, 8, f"Validade ate {validade}", ln=True, align="C")
 
         pdf.ln(10)
 
-        pdf.set_draw_color(180, 180, 180)
-        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-
-        pdf.ln(8)
-
-        # ======================================
-        # DADOS CLIENTE
-        # ======================================
-
-        pdf.set_fill_color(60, 90, 130)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(190, 9, "DADOS DO CLIENTE", ln=True, fill=True)
-
-        pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", "", 11)
-        pdf.set_fill_color(245, 245, 245)
-
-        pdf.cell(95, 9, f"Cliente: {cliente}", border=1, fill=True)
-        pdf.cell(95, 9, f"Telefone: {telefone}", border=1, ln=True, fill=True)
-
-        pdf.cell(95, 9, f"Veiculo: {veiculo}", border=1, fill=True)
-        pdf.cell(95, 9, f"Placa: {placa}", border=1, ln=True, fill=True)
-
-        pdf.cell(190, 9, f"Data: {data_orc}", border=1, ln=True, fill=True)
+        pdf.cell(190, 8, f"Cliente: {cliente}", ln=True)
+        pdf.cell(190, 8, f"Telefone: {telefone}", ln=True)
+        pdf.cell(190, 8, f"Veiculo: {veiculo}", ln=True)
+        pdf.cell(190, 8, f"Placa: {placa}", ln=True)
+        pdf.cell(190, 8, f"Data: {data_orc}", ln=True)
 
         pdf.ln(8)
 
-        # ======================================
-        # FUNÇÃO LINHA (IGUAL AO ORIGINAL)
-        # ======================================
-
-        def linha(descricao, valor):
-
-            largura_desc = 145
-            largura_val = 45
-            altura = 8
-
-            x = pdf.get_x()
-            y = pdf.get_y()
-
-            pdf.multi_cell(largura_desc, altura, descricao, border=1)
-
-            altura_total = pdf.get_y() - y
-
-            pdf.set_xy(x + largura_desc, y)
-            pdf.cell(largura_val, altura_total, valor, border=1, ln=True, align="R")
-
-        # ======================================
-        # MÃO DE OBRA
-        # ======================================
-
-        pdf.set_fill_color(70, 120, 90)
-        pdf.set_text_color(255, 255, 255)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(190, 9, "MÃO DE OBRA", ln=True, fill=True)
+        pdf.cell(190, 8, "MAO DE OBRA", ln=True)
 
-        pdf.set_text_color(0, 0, 0)
-
+        pdf.set_font("Arial", "", 11)
         for i in itens_mao:
-            linha(i.get("descricao", ""), f"R$ {safe_float(i.get('valor',0)):.2f}")
+            pdf.cell(190, 7,
+                     f"{i.get('descricao','')} - R$ {safe_float(i.get('valor',0)):.2f}",
+                     ln=True)
 
-        pdf.set_font("Arial", "B", 11)
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(145, 9, "Subtotal Mão de Obra", border=1, fill=True)
-        pdf.cell(45, 9, f"R$ {total_mao:.2f}", border=1, ln=True, align="R", fill=True)
+        pdf.ln(5)
 
-        pdf.ln(6)
-
-        # ======================================
-        # PEÇAS
-        # ======================================
-
-        pdf.set_fill_color(70, 100, 140)
-        pdf.set_text_color(255, 255, 255)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(190, 9, "PEÇAS", ln=True, fill=True)
+        pdf.cell(190, 8, "PECAS", ln=True)
 
-        pdf.set_text_color(0, 0, 0)
-
+        pdf.set_font("Arial", "", 11)
         for i in itens_pecas:
-            linha(i.get("descricao", ""), f"R$ {safe_float(i.get('valor',0)):.2f}")
-
-        pdf.set_font("Arial", "B", 11)
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(145, 9, "Subtotal Peças", border=1, fill=True)
-        pdf.cell(45, 9, f"R$ {total_peca:.2f}", border=1, ln=True, align="R", fill=True)
+            pdf.cell(190, 7,
+                     f"{i.get('descricao','')} - R$ {safe_float(i.get('valor',0)):.2f}",
+                     ln=True)
 
         pdf.ln(10)
 
-        # ======================================
-        # TOTAL FINAL
-        # ======================================
-
-        pdf.set_fill_color(90, 90, 90)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font("Arial", "B", 16)
-
-        pdf.cell(145, 12, "TOTAL GERAL", border=1, fill=True)
-        pdf.cell(45, 12, f"R$ {total:.2f}", border=1, ln=True, align="R", fill=True)
-
-        pdf.ln(18)
-
-        pdf.set_draw_color(150, 150, 150)
-        pdf.line(60, pdf.get_y(), 150, pdf.get_y())
-
-        pdf.ln(4)
-
-        pdf.set_font("Arial", "", 10)
-        pdf.set_text_color(90, 90, 90)
-        pdf.cell(190, 7, "Assinatura do Cliente", ln=True, align="C")
-
-        # ======================================
-        # SALVAR
-        # ======================================
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(190, 10, f"TOTAL: R$ {total:.2f}", ln=True)
 
         nome_pdf = f"orcamentos/{limpar_nome(cliente)}.pdf"
         pdf.output(nome_pdf)
@@ -239,7 +142,7 @@ def gerar_pdf():
 
         return jsonify({
             "status": "ok",
-            "arquivo": nome_pdf
+            "arquivo": os.path.basename(nome_pdf)
         })
 
     except Exception as e:
@@ -250,12 +153,22 @@ def gerar_pdf():
         }), 500
 
 # ======================================
-# DOWNLOAD
+# DOWNLOAD (CELULAR OK)
 # ======================================
 
 @app.route("/download/<path:nome>")
 def download(nome):
-    return send_file(nome, as_attachment=True)
+
+    caminho = os.path.join("orcamentos", nome)
+
+    if not os.path.exists(caminho):
+        return "Arquivo nao encontrado", 404
+
+    return send_file(
+        caminho,
+        as_attachment=True,
+        download_name=nome
+    )
 
 # ======================================
 # HISTÓRICO
@@ -277,4 +190,4 @@ def historico():
 # ======================================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)

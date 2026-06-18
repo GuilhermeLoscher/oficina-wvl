@@ -99,7 +99,7 @@ def home():
         "index.html",
         statuses=[status.value for status in QuoteStatus],
         metrics=db.dashboard_metrics(),
-        asset_version="20260618-4",
+        asset_version="20260618-5",
     )
 
 

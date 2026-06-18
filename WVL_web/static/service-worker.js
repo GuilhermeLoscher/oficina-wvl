@@ -1,10 +1,13 @@
-const CACHE_NAME = "wvl-pwa-v5";
+const CACHE_NAME = "wvl-pwa-v6";
 const STATIC_ASSETS = [
   "/",
   "/static/app.js",
   "/static/style.css",
   "/static/manifest.json",
-  "/static/logo.png"
+  "/static/logo.png",
+  "/static/icon-192.png",
+  "/static/icon-512.png",
+  "/static/apple-touch-icon.png"
 ];
 
 self.addEventListener("install", (event) => {

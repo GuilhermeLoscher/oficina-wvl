@@ -334,7 +334,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20260618-4");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20260618-5");
 }
 
 loadBootstrap().then(() => {

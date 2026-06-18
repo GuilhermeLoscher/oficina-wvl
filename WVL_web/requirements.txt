@@ -1,0 +1,6 @@
+Flask>=3.0
+gunicorn>=22.0
+WeasyPrint>=62.0
+reportlab>=4.2
+Pillow>=10.0
+openpyxl>=3.1

@@ -1,0 +1,5 @@
+_desktop_source/
+_pwa_reference/
+*.zip
+__pycache__/
+*.pyc

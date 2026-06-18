@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WVL Orcamentos</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WVL">
+  <link rel="apple-touch-icon" href="/static/logo.png">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <img src="/static/logo.png" alt="WVL" class="logo">
+      <div>
+        <h1>WVL Orcamentos</h1>
+        <p>Propostas comerciais e controle financeiro</p>
+      </div>
+      <nav>
+        <button type="button" data-action="new">Novo</button>
+        <button type="button" data-action="history">Historico</button>
+        <button type="button" data-action="report">Relatorio</button>
+        <button type="button" class="primary" data-action="pdf">Gerar PDF</button>
+      </nav>
+    </aside>
+
+    <main class="workspace">
+      <section class="toolbar">
+        <div>
+          <span class="eyebrow">Painel WVL</span>
+          <h2>Orcamento comercial</h2>
+        </div>
+        <div class="status-group" id="statusGroup">
+          {% for status in statuses %}
+          <button type="button" class="status-pill" data-status="{{ status }}">{{ status }}</button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="metrics" id="metrics">
+        <div><span>Aprovado</span><strong>{{ metrics.revenue }}</strong></div>
+        <div><span>Conversao</span><strong>{{ metrics.conversion }}</strong></div>
+        <div><span>Em aberto</span><strong>{{ metrics.open_value }}</strong></div>
+        <div><span>Orcamentos</span><strong>{{ metrics.quote_count }}</strong></div>
+      </section>
+
+      <section class="form-grid">
+        <div class="panel form-panel">
+          <div class="panel-title">
+            <h3>Cliente</h3>
+            <button type="button" class="ghost" data-action="backup">Backup</button>
+          </div>
+          <div class="grid four">
+            <label>Cliente<input id="clientName" list="clientOptions" autocomplete="off" placeholder="Nome do cliente"></label>
+            <label>Telefone<input id="phone" inputmode="tel" placeholder="(11) 99999-0000"></label>
+            <label>Veiculo<input id="vehicle" placeholder="Modelo / ano"></label>
+            <label>Placa<input id="plate" placeholder="ABC1D23"></label>
+          </div>
+          <datalist id="clientOptions"></datalist>
+        </div>
+
+        <div class="panel total-panel">
+          <span>Total</span>
+          <strong id="quoteTotal">R$ 0,00</strong>
+          <small id="quoteMargin">Margem: 0% | Lucro: R$ 0,00</small>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <h3>Itens</h3>
+          <div class="inline-actions">
+            <label class="compact">Imposto %<input id="taxRate" inputmode="decimal" value="0"></label>
+            <label class="check"><input id="includeCover" type="checkbox" checked> Capa PDF</label>
+          </div>
+        </div>
+
+        <div class="quick-add">
+          <input id="serviceDesc" placeholder="Descricao do servico">
+          <input id="servicePrice" inputmode="decimal" placeholder="Valor">
+          <input id="serviceCost" inputmode="decimal" placeholder="Custo">
+          <button type="button" class="success" data-action="add-service">Adicionar servico</button>
+        </div>
+
+        <div class="quick-add">
+          <input id="productSearch" list="productOptions" placeholder="Produto ou peca">
+          <input id="productPrice" inputmode="decimal" placeholder="Valor">
+          <input id="productCost" inputmode="decimal" placeholder="Custo">
+          <button type="button" class="primary" data-action="add-product">Adicionar produto</button>
+        </div>
+        <datalist id="productOptions"></datalist>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Descricao</th>
+                <th>Qtd.</th>
+                <th>Preco</th>
+                <th>Custo</th>
+                <th>Desc.</th>
+                <th>Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+
+        <button type="button" class="ghost full" data-action="add-empty">Adicionar linha</button>
+      </section>
+
+      <section class="split">
+        <div class="panel">
+          <div class="panel-title">
+            <h3>Termos</h3>
+          </div>
+          <textarea id="notes">Validade da proposta: 7 dias. Pagamento conforme combinado. Pecas sujeitas a disponibilidade.</textarea>
+        </div>
+        <div class="panel">
+          <div class="panel-title">
+            <h3>PDF</h3>
+          </div>
+          <p id="pdfStatus" class="muted">Nenhum PDF gerado nesta sessao.</p>
+          <div class="pdf-actions">
+            <a id="downloadLink" class="button disabled" href="#">Download</a>
+            <a id="whatsappLink" class="button whatsapp disabled" href="#" target="_blank" rel="noopener">WhatsApp</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel history-panel" id="historyPanel" hidden>
+        <div class="panel-title">
+          <h3>Historico</h3>
+          <button type="button" class="ghost" data-action="close-history">Fechar</button>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

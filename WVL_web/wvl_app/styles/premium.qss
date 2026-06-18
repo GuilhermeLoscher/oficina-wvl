@@ -1,0 +1,244 @@
+* {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    color: #e5e7eb;
+}
+
+QMainWindow, #Root {
+    background: #08111f;
+}
+
+QScrollArea#RootScroll {
+    background: #08111f;
+    border: 0;
+}
+
+QScrollBar:vertical {
+    background: #08111f;
+    width: 10px;
+    margin: 4px 0 4px 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #25344d;
+    border-radius: 5px;
+    min-height: 32px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QLabel {
+    background: transparent;
+}
+
+#AppTitle {
+    font-size: 27px;
+    font-weight: 800;
+    color: #f8fafc;
+}
+
+#PanelTitle {
+    font-size: 17px;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+#Muted {
+    color: #8fa1b8;
+    font-size: 12px;
+}
+
+#Card {
+    background: #101b2d;
+    border: 1px solid #1f2a3d;
+    border-radius: 12px;
+}
+
+#FieldLabel {
+    color: #dbeafe;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 0 0 2px;
+}
+
+#FieldBox {
+    background: transparent;
+}
+
+QLineEdit, QTextEdit, QComboBox {
+    background: #0b1424;
+    border: 1px solid #25344d;
+    border-radius: 9px;
+    padding: 0 12px;
+    min-height: 34px;
+    selection-background-color: #2563eb;
+}
+
+QTextEdit {
+    padding: 10px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+    border: 1px solid #3b82f6;
+    background: #0d1728;
+}
+
+QComboBox::drop-down {
+    width: 28px;
+    border: 0;
+}
+
+QComboBox QAbstractItemView, QCompleter QAbstractItemView {
+    background: #0b1424;
+    border: 1px solid #25344d;
+    selection-background-color: #1d4ed8;
+    padding: 6px;
+}
+
+QPushButton {
+    background: #1c2a3f;
+    border: 1px solid #2c3a52;
+    border-radius: 9px;
+    padding: 0 16px;
+    min-height: 34px;
+    font-weight: 700;
+}
+
+QPushButton:hover {
+    background: #263a58;
+}
+
+QPushButton:disabled {
+    color: #64748b;
+    background: #111827;
+}
+
+#PrimaryButton {
+    background: #2563eb;
+    border: 1px solid #3b82f6;
+    color: white;
+}
+
+#PrimaryButton:hover {
+    background: #1d4ed8;
+}
+
+#GhostButton {
+    background: transparent;
+}
+
+#DangerButton {
+    background: #3f1d2a;
+    border: 1px solid #7f1d1d;
+}
+
+#SuccessButton {
+    background: #047857;
+    border: 1px solid #10b981;
+    color: white;
+}
+
+#SuccessButton:hover {
+    background: #059669;
+}
+
+#WhatsAppButton {
+    background: #128c7e;
+    border: 1px solid #25d366;
+    color: white;
+}
+
+#WhatsAppButton:hover {
+    background: #075e54;
+}
+
+#PdfPath {
+    color: #93c5fd;
+    font-size: 11px;
+    line-height: 15px;
+    padding: 6px;
+    border: 1px solid #25344d;
+    border-radius: 8px;
+    background: #0b1424;
+}
+
+QTableWidget {
+    background: #0b1424;
+    alternate-background-color: #0f1a2c;
+    border: 1px solid #1f2a3d;
+    border-radius: 10px;
+    gridline-color: #1f2a3d;
+    outline: 0;
+}
+
+QHeaderView::section {
+    background: #111c30;
+    color: #aab8cc;
+    border: 0;
+    padding: 10px 9px;
+    font-weight: 800;
+    min-height: 34px;
+}
+
+QTableWidget::item {
+    padding: 10px;
+    border-bottom: 1px solid #162238;
+}
+
+QTableWidget::item:selected {
+    background: #1e40af;
+}
+
+#StatusPill {
+    background: #101b2d;
+    border: 1px solid #24324a;
+    border-radius: 14px;
+    padding: 0 12px;
+    min-height: 36px;
+    color: #8fa1b8;
+    font-weight: 700;
+}
+
+#StatusPill[active="true"] {
+    background: #0f2d2b;
+    border: 1px solid #10b981;
+    color: #bbf7d0;
+}
+
+#TotalLabel {
+    color: #60a5fa;
+    font-size: 30px;
+    font-weight: 900;
+}
+
+#MarginOk {
+    color: #34d399;
+    font-weight: 800;
+    padding: 6px 0;
+}
+
+#MarginRisk {
+    color: #f59e0b;
+    font-weight: 800;
+    padding: 6px 0;
+}
+
+#AccentBlue, #AccentGreen, #AccentAmber, #AccentSlate {
+    font-size: 16px;
+    font-weight: 900;
+}
+
+#AccentBlue { color: #60a5fa; }
+#AccentGreen { color: #34d399; }
+#AccentAmber { color: #fbbf24; }
+#AccentSlate { color: #cbd5e1; }
+
+QCheckBox {
+    spacing: 8px;
+    color: #cbd5e1;
+    background: transparent;
+    padding-top: 4px;
+}

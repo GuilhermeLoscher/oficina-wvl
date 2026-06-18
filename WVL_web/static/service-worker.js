@@ -1,4 +1,4 @@
-const CACHE_NAME = "wvl-pwa-v4";
+const CACHE_NAME = "wvl-pwa-v5";
 const STATIC_ASSETS = [
   "/",
   "/static/app.js",
@@ -24,6 +24,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/download/") || url.pathname === "/relatorio-mensal") return;
   event.respondWith(
     fetch(request)
       .then((response) => {

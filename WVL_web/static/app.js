@@ -181,6 +181,43 @@ async function generatePdf() {
   }
 }
 
+async function downloadPdf(event) {
+  event.preventDefault();
+  const link = $("downloadLink");
+  if (!link.href || link.classList.contains("disabled")) return;
+
+  const filename = link.getAttribute("download") || "orcamento-wvl.pdf";
+  try {
+    toast("Preparando PDF...");
+    const response = await fetch(link.href, { cache: "no-store" });
+    if (!response.ok) throw new Error("Nao foi possivel baixar o PDF.");
+    const blob = await response.blob();
+    const file = new File([blob], filename, { type: "application/pdf" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: filename,
+        text: "Orcamento WVL"
+      });
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
+    const tempLink = document.createElement("a");
+    tempLink.href = objectUrl;
+    tempLink.download = filename;
+    tempLink.target = "_blank";
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    tempLink.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+  } catch (error) {
+    toast(error.message || "Abra o PDF pelo navegador para salvar.");
+    window.open(link.href, "_blank", "noopener");
+  }
+}
+
 function renderHistory() {
   const list = $("historyList");
   if (!state.history.length) {
@@ -273,6 +310,7 @@ document.addEventListener("input", (event) => {
 document.addEventListener("click", (event) => {
   const target = event.target.closest("button, a");
   if (!target) return;
+  if (target.id === "downloadLink") downloadPdf(event);
   if (target.dataset.status) setStatus(target.dataset.status);
   if (target.dataset.remove) {
     state.items.splice(Number(target.dataset.remove), 1);
@@ -296,7 +334,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20260618-3");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20260618-4");
 }
 
 loadBootstrap().then(() => {

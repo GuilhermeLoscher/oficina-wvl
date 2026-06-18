@@ -5,7 +5,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, jsonify, render_template, request, send_file, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from wvl_app.controllers.quote_controller import QuoteController
 from wvl_app.database import Database
@@ -18,6 +19,7 @@ PDF_DIR = Path(os.environ.get("WVL_PDF_DIR", BASE_DIR / "orcamentos"))
 DB_PATH = DATA_DIR / "wvl.sqlite3"
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 db = Database(DB_PATH)
 db.initialize()
 controller = QuoteController(db, BASE_DIR)
@@ -97,6 +99,7 @@ def home():
         "index.html",
         statuses=[status.value for status in QuoteStatus],
         metrics=db.dashboard_metrics(),
+        asset_version="20260618-2",
     )
 
 
@@ -170,12 +173,14 @@ def create_quote():
     include_cover = bool(data.get("include_cover", True))
     path = controller.persist_and_render_pdf(quote, include_cover=include_cover)
     filename = path.name
+    download_url = url_for("download", filename=filename)
+    absolute_download_url = url_for("download", filename=filename, _external=True)
     phone = "".join(ch for ch in quote.client.phone if ch.isdigit())
     if phone and not phone.startswith("55"):
         phone = "55" + phone
     message = quote_plus(
         f"Ola, {quote.client.name}! Segue o orcamento WVL. "
-        f"Total: {format_money(quote.total)}. PDF: {filename}"
+        f"Total: {format_money(quote.total)}. Baixe o PDF aqui: {absolute_download_url}"
     )
     whatsapp = f"https://wa.me/{phone}?text={message}" if phone else f"https://wa.me/?text={message}"
     return jsonify(
@@ -183,7 +188,8 @@ def create_quote():
             "status": "ok",
             "quote": quote_json(quote),
             "filename": filename,
-            "download_url": f"/download/{filename}",
+            "download_url": download_url,
+            "absolute_download_url": absolute_download_url,
             "whatsapp_url": whatsapp,
             "metrics": db.dashboard_metrics(),
             "history": db.list_quotes(limit=20),

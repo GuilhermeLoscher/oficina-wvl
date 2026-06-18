@@ -154,18 +154,30 @@ function preview() {
 
 async function generatePdf() {
   try {
+    const pdfButton = document.querySelector('[data-action="pdf"]');
+    if (pdfButton) {
+      pdfButton.disabled = true;
+      pdfButton.textContent = "Gerando...";
+    }
     const data = await api("/api/quotes", { method: "POST", body: JSON.stringify(payload()) });
     $("pdfStatus").textContent = `PDF gerado: ${data.filename}`;
     $("downloadLink").href = data.download_url;
+    $("downloadLink").setAttribute("download", data.filename);
     $("downloadLink").classList.remove("disabled");
     $("whatsappLink").href = data.whatsapp_url;
     $("whatsappLink").classList.remove("disabled");
     state.history = data.history || state.history;
     updateMetrics(data.metrics);
     renderHistory();
-    window.location.href = data.download_url;
+    toast("PDF gerado. Use Download ou WhatsApp nos botoes abaixo.");
   } catch (error) {
     toast(error.message);
+  } finally {
+    const pdfButton = document.querySelector('[data-action="pdf"]');
+    if (pdfButton) {
+      pdfButton.disabled = false;
+      pdfButton.textContent = "Gerar PDF";
+    }
   }
 }
 
@@ -284,7 +296,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20260618-2");
 }
 
 loadBootstrap().then(() => {

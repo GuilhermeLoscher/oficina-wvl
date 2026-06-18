@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="WVL">
   <link rel="apple-touch-icon" href="/static/logo.png">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v={{ asset_version }}">
 </head>
 <body>
   <div class="shell">
@@ -127,7 +127,7 @@
           </div>
           <p id="pdfStatus" class="muted">Nenhum PDF gerado nesta sessao.</p>
           <div class="pdf-actions">
-            <a id="downloadLink" class="button disabled" href="#">Download</a>
+            <a id="downloadLink" class="button disabled" href="#" download>Download</a>
             <a id="whatsappLink" class="button whatsapp disabled" href="#" target="_blank" rel="noopener">WhatsApp</a>
           </div>
         </div>
@@ -144,6 +144,6 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v={{ asset_version }}"></script>
 </body>
 </html>

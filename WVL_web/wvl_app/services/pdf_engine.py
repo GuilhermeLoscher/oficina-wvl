@@ -56,7 +56,7 @@ class PdfEngine:
         soft = colors.HexColor("#f8fafc")
         soft_blue = colors.HexColor("#eef4ff")
 
-        logo_path = next((p for p in (self.base_dir / "assets" / "logo.png", self.base_dir / "logo.png") if p.exists()), None)
+        logo_path = next((p for p in (self.base_dir / "static" / "logo.png", self.base_dir / "assets" / "logo.png", self.base_dir / "logo.png") if p.exists()), None)
         proposal_code = f"WVL-{quote.created_at.strftime('%Y%m%d')}-{safe_filename(quote.client.name)[:10].upper()}"
 
         def set_font(name: str, size: int, color=text):
@@ -304,7 +304,7 @@ class PdfEngine:
         c.save()
 
     def _logo_uri(self) -> str:
-        for candidate in (self.base_dir / "assets" / "logo.png", self.base_dir / "logo.png"):
+        for candidate in (self.base_dir / "static" / "logo.png", self.base_dir / "assets" / "logo.png", self.base_dir / "logo.png"):
             if candidate.exists():
                 return candidate.as_uri()
         return ""

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: oficina-wvl
+    env: python
+    rootDir: WVL_web
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: WVL_DATA_DIR
+        value: /var/data/data
+      - key: WVL_PDF_DIR
+        value: /var/data/orcamentos
+    disk:
+      name: wvl-data
+      mountPath: /var/data
+      sizeGB: 1

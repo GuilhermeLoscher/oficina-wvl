@@ -1,4 +1,4 @@
-const CACHE_NAME = "wvl-pwa-v13";
+const CACHE_NAME = "wvl-pwa-v14";
 const STATIC_ASSETS = [
   "/",
   "/static/app.js",

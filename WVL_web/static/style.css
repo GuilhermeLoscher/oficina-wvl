@@ -189,6 +189,7 @@ nav button { background: #1e293b; color: #f8fafc; border-color: #334155; }
   gap: 12px;
   margin-bottom: 14px;
 }
+.panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .status-group { scrollbar-width: none; }
 .status-group::-webkit-scrollbar { display: none; }
 
@@ -413,6 +414,8 @@ textarea { min-height: 116px; resize: vertical; }
   .form-grid { gap: 12px; }
   .panel-title { align-items: flex-start; }
   .panel-title { flex-wrap: wrap; }
+  .panel-actions { width: 100%; }
+  .panel-actions button { flex: 1; }
   .section-heading > div:first-child { min-width: 0; }
   .items-heading { flex-direction: column; }
   .inline-actions { width: 100%; justify-content: space-between; }

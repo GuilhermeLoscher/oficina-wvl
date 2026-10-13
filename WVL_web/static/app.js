@@ -57,6 +57,10 @@ function invalidateGeneratedPdf() {
   $("downloadLink").classList.add("disabled");
 }
 
+function setQuoteMode(label) {
+  $("quoteModeLabel").textContent = label;
+}
+
 function payload() {
   return {
     quote_id: state.currentQuoteId,
@@ -467,7 +471,7 @@ function renderHistory() {
       <span>${escapeHtml(row.name)}<br><small>${escapeHtml(row.vehicle || "-")} ${escapeHtml(row.plate || "")}</small></span>
       <span>${escapeHtml(row.status)}</span>
       <span>R$ ${Number(row.total || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-      <button type="button" class="ghost" ${row.local ? `data-load-local="${row.local_id}"` : `data-load="${row.id}"`}>Abrir</button>
+      <button type="button" class="ghost" ${row.local ? `data-load-local="${row.local_id}"` : `data-load="${row.id}"`}>Editar</button>
     </div>
   `).join("");
 }
@@ -503,7 +507,8 @@ async function openHistoryQuote(id) {
     state.currentLocalId = null;
     applyQuoteData(data);
     saveLocalDraft();
-    $("saveStatus").textContent = "Orçamento recuperado";
+    setQuoteMode(`Editando orçamento #${id}`);
+    $("saveStatus").textContent = "Orçamento aberto para edição";
   } catch (error) {
     toast(error.message);
   }
@@ -518,7 +523,44 @@ function openLocalHistoryQuote(id) {
   state.currentLocalId = record.id;
   state.currentQuoteId = record.server_id || null;
   applyQuoteData(record.data);
-  $("saveStatus").textContent = "Orçamento recuperado";
+  setQuoteMode("Editando orçamento salvo");
+  $("saveStatus").textContent = "Orçamento aberto para edição";
+}
+
+async function importPdf(file) {
+  if (!file) return;
+  if (file.size > 12 * 1024 * 1024) {
+    toast("O PDF deve ter no máximo 12 MB.");
+    return;
+  }
+  const button = document.querySelector('[data-action="import-pdf"]');
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Importando...";
+  try {
+    const formData = new FormData();
+    formData.append("pdf", file, file.name);
+    const response = await fetch("/api/import-pdf", { method: "POST", body: formData });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Não foi possível importar o PDF.");
+
+    state.currentQuoteId = null;
+    state.currentLocalId = null;
+    applyQuoteData(data.quote);
+    $("includeCover").checked = data.quote.include_cover !== false;
+    setQuoteMode("PDF importado para edição");
+    saveLocalDraft();
+    scheduleAutosave();
+
+    const warning = (data.warnings || [])[0];
+    $("saveStatus").textContent = warning ? "PDF importado - revise os dados" : "PDF importado com todos os dados";
+    toast(warning || `${state.items.length} itens importados. Agora você pode editar e enviar novamente.`);
+  } catch (error) {
+    toast(error.message || "Não foi possível importar o PDF.");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 }
 
 async function showHistory() {
@@ -549,6 +591,7 @@ function resetForm() {
   renderItems();
   preview();
   $("saveStatus").textContent = "Novo orçamento";
+  setQuoteMode("Novo orçamento");
 }
 
 async function backup() {
@@ -613,13 +656,18 @@ document.addEventListener("click", (event) => {
   if (action === "add-product") addItem("product");
   if (action === "add-empty") addEmptyItem();
   if (action === "backup") backup();
+  if (action === "import-pdf") $("pdfImportInput").click();
 });
 
 $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
+$("pdfImportInput").addEventListener("change", (event) => {
+  const file = event.target.files && event.target.files[0];
+  importPdf(file).finally(() => { event.target.value = ""; });
+});
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-7");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-8");
 }
 
 loadBootstrap().then(() => {

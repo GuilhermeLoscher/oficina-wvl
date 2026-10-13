@@ -9,6 +9,7 @@ from re import sub
 from textwrap import wrap
 
 from ..models import Quote, format_money
+from .pdf_transfer import embed_quote_payload
 
 
 def safe_filename(value: str) -> str:
@@ -29,6 +30,11 @@ class PdfEngine:
                 self._render_weasyprint(target, quote, include_cover)
         except Exception:
             self._render_reportlab(target, quote, include_cover)
+        try:
+            embed_quote_payload(target, quote, include_cover)
+        except Exception:
+            # O PDF continua utilizável mesmo se os dados editáveis não puderem ser anexados.
+            pass
         return target
 
     def _render_weasyprint(self, target: Path, quote: Quote, include_cover: bool) -> None:

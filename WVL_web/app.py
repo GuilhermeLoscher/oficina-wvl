@@ -10,6 +10,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from wvl_app.controllers.quote_controller import QuoteController
 from wvl_app.database import Database
 from wvl_app.models import Client, Product, QuoteStatus, format_money, money
+from wvl_app.services.pdf_transfer import MAX_PDF_BYTES, PdfImportError, import_quote_pdf
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -106,7 +107,7 @@ def home():
         "index.html",
         statuses=[status.value for status in QuoteStatus],
         metrics=db.dashboard_metrics(),
-        asset_version="20261013-7",
+        asset_version="20261013-8",
     )
 
 
@@ -213,6 +214,33 @@ def autosave_quote():
             "metrics": db.dashboard_metrics(),
         }
     )
+
+
+@app.post("/api/import-pdf")
+def import_pdf():
+    uploaded = request.files.get("pdf")
+    if uploaded is None or not uploaded.filename:
+        return jsonify({"error": "Selecione um PDF gerado pelo aplicativo WVL."}), 400
+    if not uploaded.filename.lower().endswith(".pdf"):
+        return jsonify({"error": "Selecione um arquivo no formato PDF."}), 400
+    content = uploaded.stream.read(MAX_PDF_BYTES + 1)
+    try:
+        imported, warnings, source = import_quote_pdf(content)
+        quote = quote_payload(imported)
+        if not quote.items:
+            raise PdfImportError("Nenhum item editável foi encontrado neste PDF.")
+        result = quote_json(quote)
+        result["include_cover"] = bool(imported.get("include_cover", True))
+        return jsonify(
+            {
+                "status": "ok",
+                "quote": result,
+                "source": source,
+                "warnings": warnings,
+            }
+        )
+    except PdfImportError as exc:
+        return jsonify({"error": str(exc)}), 400
 
 
 @app.get("/api/history")

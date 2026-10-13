@@ -34,7 +34,7 @@
     <main class="workspace">
       <section class="toolbar">
         <div>
-          <span class="eyebrow">Novo orçamento</span>
+          <span class="eyebrow" id="quoteModeLabel">Novo orçamento</span>
           <h2>Orçamento comercial</h2>
           <p class="toolbar-copy">Preencha os dados e adicione os serviços e peças.</p>
           <span id="saveStatus" class="save-status">Novo orçamento</span>
@@ -57,7 +57,11 @@
         <div class="panel form-panel">
           <div class="panel-title section-heading">
             <div><span class="section-step">1</span><h3>Cliente e veículo</h3></div>
-            <button type="button" class="ghost" data-action="backup">Backup</button>
+            <div class="panel-actions">
+              <button type="button" class="ghost" data-action="import-pdf">Importar PDF</button>
+              <button type="button" class="ghost" data-action="backup">Backup</button>
+            </div>
+            <input id="pdfImportInput" type="file" accept="application/pdf,.pdf" hidden>
           </div>
           <div class="grid four">
             <label>Cliente<input id="clientName" list="clientOptions" autocomplete="off" placeholder="Nome do cliente"></label>

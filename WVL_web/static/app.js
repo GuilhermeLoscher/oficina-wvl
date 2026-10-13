@@ -52,7 +52,7 @@ function quoteTotal(data = payload()) {
 
 function invalidateGeneratedPdf() {
   state.generatedPdf = null;
-  $("pdfStatus").textContent = "O PDF sera gerado ao enviar ou pelo botao Gerar PDF.";
+  $("pdfStatus").textContent = "O PDF será gerado automaticamente ao tocar em Enviar PDF.";
   $("downloadLink").href = "#";
   $("downloadLink").classList.add("disabled");
 }
@@ -313,11 +313,6 @@ function preview() {
 
 async function generatePdf() {
   try {
-    const pdfButton = document.querySelector('[data-action="pdf"]');
-    if (pdfButton) {
-      pdfButton.disabled = true;
-      pdfButton.textContent = "Gerando...";
-    }
     const data = await api("/api/quotes", { method: "POST", body: JSON.stringify(payload()) });
     state.currentQuoteId = data.quote_id;
     $("pdfStatus").textContent = `PDF gerado: ${data.filename}`;
@@ -344,17 +339,11 @@ async function generatePdf() {
     mergeHistory();
     $("saveStatus").textContent = "Salvo e PDF gerado";
     updateMetrics(data.metrics);
-    toast("PDF gerado. Use Download ou Enviar PDF nos botoes abaixo.");
+    toast("PDF gerado e salvo no histórico.");
     return state.generatedPdf;
   } catch (error) {
     toast(error.message);
     return null;
-  } finally {
-    const pdfButton = document.querySelector('[data-action="pdf"]');
-    if (pdfButton) {
-      pdfButton.disabled = false;
-      pdfButton.textContent = "Gerar PDF";
-    }
   }
 }
 
@@ -367,23 +356,23 @@ async function fetchPdfFile(url, filename) {
 
 async function sharePdf(event) {
   event.preventDefault();
-  const link = $("whatsappLink");
-  if (link.dataset.busy === "true") return;
+  const trigger = event.target.closest("button, a");
+  if (!trigger || trigger.dataset.busy === "true") return;
 
-  link.dataset.busy = "true";
-  link.classList.add("disabled");
-  const originalText = link.textContent;
+  trigger.dataset.busy = "true";
+  trigger.classList.add("disabled");
+  const originalText = trigger.textContent;
 
   try {
     let generated = state.generatedPdf;
     if (!generated) {
-      link.textContent = "Gerando PDF...";
+      trigger.textContent = "Gerando PDF...";
       toast("Gerando PDF para envio...");
       generated = await generatePdf();
       if (!generated) return;
     }
 
-    link.textContent = "Preparando envio...";
+    trigger.textContent = "Preparando envio...";
     toast("Preparando PDF para envio...");
     const file = generated.file || await fetchPdfFile(generated.url, generated.filename);
     generated.file = file;
@@ -405,9 +394,9 @@ async function sharePdf(event) {
     }
     toast(error.message || "Nao foi possivel enviar o PDF.");
   } finally {
-    link.dataset.busy = "false";
-    link.classList.remove("disabled");
-    link.textContent = originalText;
+    trigger.dataset.busy = "false";
+    trigger.classList.remove("disabled");
+    trigger.textContent = originalText;
   }
 }
 
@@ -601,7 +590,7 @@ document.addEventListener("click", (event) => {
   if (action === "history") showHistory();
   if (action === "close-history") $("historyPanel").hidden = true;
   if (action === "report") window.location.href = "/relatorio-mensal";
-  if (action === "pdf") generatePdf();
+  if (action === "send") sharePdf(event);
   if (action === "add-service") addItem("service");
   if (action === "add-product") addItem("product");
   if (action === "add-empty") addEmptyItem();
@@ -612,7 +601,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-4");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-5");
 }
 
 loadBootstrap().then(() => {

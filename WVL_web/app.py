@@ -98,7 +98,7 @@ def home():
         "index.html",
         statuses=[status.value for status in QuoteStatus],
         metrics=db.dashboard_metrics(),
-        asset_version="20261013-2",
+        asset_version="20261013-3",
     )
 
 

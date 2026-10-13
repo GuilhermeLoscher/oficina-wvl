@@ -79,6 +79,7 @@ class Database:
             self._seed(conn)
 
     def _seed(self, conn: sqlite3.Connection) -> None:
+        conn.execute("DELETE FROM products WHERE description = ?", ("Troca de oleo premium",))
         if conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]:
             return
         clients = [
@@ -86,7 +87,6 @@ class Database:
             ("Empresa Modelo LTDA", "(11) 3333-2222", "Hilux", "WVL2026"),
         ]
         products = [
-            ("Troca de oleo premium", "280.00", "145.00"),
             ("Diagnostico eletronico completo", "180.00", "45.00"),
             ("Pastilha de freio dianteira", "420.00", "260.00"),
             ("Mao de obra especializada", "150.00", "55.00"),

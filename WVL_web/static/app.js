@@ -127,16 +127,21 @@ function renderItems() {
     const subtotal = Math.max(0, moneyValue(item.quantity) * moneyValue(item.unit_price) - moneyValue(item.discount));
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td><input data-field="description" data-index="${index}" value="${item.description.replaceAll('"', "&quot;")}"></td>
-      <td><input data-field="quantity" data-index="${index}" inputmode="decimal" value="${item.quantity}"></td>
-      <td><input data-field="unit_price" data-index="${index}" inputmode="decimal" value="${item.unit_price}"></td>
-      <td><input data-field="unit_cost" data-index="${index}" inputmode="decimal" value="${item.unit_cost}"></td>
-      <td><input data-field="discount" data-index="${index}" inputmode="decimal" value="${item.discount}"></td>
-      <td><strong>${formatBRL(subtotal)}</strong></td>
-      <td><button type="button" class="remove" data-remove="${index}">Remover</button></td>
+      <td data-label="Descrição"><input aria-label="Descrição" data-field="description" data-index="${index}" value="${item.description.replaceAll('"', "&quot;")}"></td>
+      <td data-label="Quantidade"><input aria-label="Quantidade" data-field="quantity" data-index="${index}" inputmode="decimal" value="${item.quantity}"></td>
+      <td data-label="Preço"><input aria-label="Preço" data-field="unit_price" data-index="${index}" inputmode="decimal" value="${item.unit_price}"></td>
+      <td data-label="Custo"><input aria-label="Custo" data-field="unit_cost" data-index="${index}" inputmode="decimal" value="${item.unit_cost}"></td>
+      <td data-label="Desconto"><input aria-label="Desconto" data-field="discount" data-index="${index}" inputmode="decimal" value="${item.discount}"></td>
+      <td data-label="Total"><strong>${formatBRL(subtotal)}</strong></td>
+      <td class="remove-cell"><button type="button" class="remove" data-remove="${index}" aria-label="Remover item ${index + 1}">Remover</button></td>
     `;
     body.appendChild(row);
   });
+  if (!state.items.length) {
+    body.innerHTML = `<tr class="empty-row"><td colspan="7">Nenhum item adicionado ainda.</td></tr>`;
+  }
+  const count = state.items.length;
+  $("itemsCount").textContent = `${count} ${count === 1 ? "item" : "itens"}`;
 }
 
 function updateMetrics(metrics) {
@@ -344,7 +349,7 @@ function resetForm() {
   invalidateGeneratedPdf();
   state.items = [];
   setStatus("Rascunho");
-  addEmptyItem();
+  renderItems();
   preview();
 }
 
@@ -412,11 +417,11 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-2");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-3");
 }
 
 loadBootstrap().then(() => {
   setStatus("Rascunho");
-  addEmptyItem();
+  renderItems();
   preview();
 });

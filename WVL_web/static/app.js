@@ -4,13 +4,20 @@ const state = {
   clients: [],
   products: [],
   history: [],
+  serverHistory: [],
+  localHistory: [],
+  currentQuoteId: null,
+  currentLocalId: null,
   generatedPdf: null
 };
+
+const LOCAL_HISTORY_KEY = "wvl_history_v1";
 
 const $ = (id) => document.getElementById(id);
 
 function moneyValue(value) {
-  const text = String(value || "0").trim().replace(/\./g, "").replace(",", ".");
+  let text = String(value || "0").trim();
+  text = text.includes(",") ? text.replace(/\./g, "").replace(",", ".") : text;
   const parsed = Number.parseFloat(text);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -27,6 +34,22 @@ function toast(message) {
   box.timer = setTimeout(() => { box.hidden = true; }, 3600);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function quoteTotal(data = payload()) {
+  const subtotal = (data.items || []).reduce((sum, item) => (
+    sum + Math.max(0, moneyValue(item.quantity) * moneyValue(item.unit_price) - moneyValue(item.discount))
+  ), 0);
+  return subtotal + subtotal * moneyValue(data.tax_rate) / 100;
+}
+
 function invalidateGeneratedPdf() {
   state.generatedPdf = null;
   $("pdfStatus").textContent = "O PDF sera gerado ao enviar ou pelo botao Gerar PDF.";
@@ -36,6 +59,7 @@ function invalidateGeneratedPdf() {
 
 function payload() {
   return {
+    quote_id: state.currentQuoteId,
     client_name: $("clientName").value.trim(),
     phone: $("phone").value.trim(),
     vehicle: $("vehicle").value.trim(),
@@ -58,6 +82,121 @@ async function api(path, options = {}) {
   return data;
 }
 
+function loadLocalHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOCAL_HISTORY_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistLocalHistory() {
+  try {
+    localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(state.localHistory.slice(0, 200)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function meaningfulQuote(data = payload()) {
+  return Boolean(data.client_name || (data.items || []).some((item) => item.description.trim()));
+}
+
+function newLocalId() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function saveLocalDraft() {
+  const data = payload();
+  if (!meaningfulQuote(data)) return null;
+  state.currentLocalId ||= newLocalId();
+  const record = {
+    id: state.currentLocalId,
+    server_id: state.currentQuoteId,
+    updated_at: new Date().toISOString(),
+    name: data.client_name || "Orçamento sem cliente",
+    phone: data.phone,
+    vehicle: data.vehicle,
+    plate: data.plate,
+    status: data.status,
+    total: quoteTotal(data),
+    data: JSON.parse(JSON.stringify(data))
+  };
+  const existing = state.localHistory.findIndex((row) => row.id === record.id);
+  if (existing >= 0) state.localHistory.splice(existing, 1);
+  state.localHistory.unshift(record);
+  persistLocalHistory();
+  mergeHistory();
+  return record;
+}
+
+function mergeHistory() {
+  const serverIds = new Set(state.localHistory.map((row) => Number(row.server_id)).filter(Boolean));
+  const localRows = state.localHistory.map((row) => ({
+    ...row,
+    id: `local:${row.id}`,
+    local_id: row.id,
+    local: true
+  }));
+  const serverRows = state.serverHistory.filter((row) => !serverIds.has(Number(row.id)));
+  state.history = [...localRows, ...serverRows].sort((a, b) => {
+    const aDate = a.updated_at || a.created_at || "";
+    const bDate = b.updated_at || b.created_at || "";
+    return bDate.localeCompare(aDate);
+  });
+  renderHistory();
+}
+
+let autosaveTimer;
+let autosaveInFlight = false;
+let autosaveQueued = false;
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  if (!meaningfulQuote()) {
+    $("saveStatus").textContent = "Novo orçamento";
+    return;
+  }
+  $("saveStatus").textContent = "Salvando...";
+  if (autosaveInFlight) {
+    autosaveQueued = true;
+    return;
+  }
+  autosaveTimer = setTimeout(autosave, 700);
+}
+
+async function autosave() {
+  const localRecord = saveLocalDraft();
+  if (!localRecord) return;
+  $("saveStatus").textContent = "Salvo neste iPhone";
+  const data = payload();
+  if (!data.client_name || !data.items.some((item) => item.description.trim())) return;
+  autosaveInFlight = true;
+  try {
+    const result = await api("/api/autosave", { method: "POST", body: JSON.stringify(data) });
+    if (result.status === "ok") {
+      localRecord.server_id = result.quote_id;
+      localRecord.data.quote_id = result.quote_id;
+      if (state.currentLocalId === localRecord.id) state.currentQuoteId = result.quote_id;
+      state.serverHistory = result.history || state.serverHistory;
+      updateMetrics(result.metrics);
+      persistLocalHistory();
+      mergeHistory();
+      $("saveStatus").textContent = "Salvo automaticamente";
+    }
+  } catch {
+    $("saveStatus").textContent = "Salvo neste iPhone";
+  } finally {
+    autosaveInFlight = false;
+    if (autosaveQueued) {
+      autosaveQueued = false;
+      scheduleAutosave();
+    }
+  }
+}
+
 function setStatus(status) {
   if (state.status !== status) invalidateGeneratedPdf();
   state.status = status;
@@ -65,6 +204,7 @@ function setStatus(status) {
     button.classList.toggle("active", button.dataset.status === status);
   });
   preview();
+  scheduleAutosave();
 }
 
 function fillDatalists() {
@@ -78,6 +218,7 @@ function fillClientByName() {
   $("phone").value = found.phone || "";
   $("vehicle").value = found.vehicle || "";
   $("plate").value = found.plate || "";
+  scheduleAutosave();
 }
 
 function fillProductByName() {
@@ -112,12 +253,14 @@ function addItem(kind) {
   costEl.value = "";
   renderItems();
   preview();
+  scheduleAutosave();
 }
 
 function addEmptyItem() {
   state.items.push({ description: "", quantity: "1", unit_price: "0", unit_cost: "0", discount: "0" });
   invalidateGeneratedPdf();
   renderItems();
+  scheduleAutosave();
 }
 
 function renderItems() {
@@ -176,6 +319,7 @@ async function generatePdf() {
       pdfButton.textContent = "Gerando...";
     }
     const data = await api("/api/quotes", { method: "POST", body: JSON.stringify(payload()) });
+    state.currentQuoteId = data.quote_id;
     $("pdfStatus").textContent = `PDF gerado: ${data.filename}`;
     $("downloadLink").href = data.download_url;
     $("downloadLink").setAttribute("download", data.filename);
@@ -190,9 +334,16 @@ async function generatePdf() {
     } catch {
       // O envio tentara buscar o arquivo novamente quando o usuario clicar.
     }
-    state.history = data.history || state.history;
+    state.serverHistory = data.history || state.serverHistory;
+    const localRecord = saveLocalDraft();
+    if (localRecord) {
+      localRecord.server_id = data.quote_id;
+      localRecord.data.quote_id = data.quote_id;
+      persistLocalHistory();
+    }
+    mergeHistory();
+    $("saveStatus").textContent = "Salvo e PDF gerado";
     updateMetrics(data.metrics);
-    renderHistory();
     toast("PDF gerado. Use Download ou Enviar PDF nos botoes abaixo.");
     return state.generatedPdf;
   } catch (error) {
@@ -305,40 +456,79 @@ function renderHistory() {
   }
   list.innerHTML = state.history.map((row) => `
     <div class="history-row">
-      <strong>#${row.id}</strong>
-      <span>${row.name}<br><small>${row.vehicle || "-"} ${row.plate || ""}</small></span>
-      <span>${row.status}</span>
+      <strong>${row.local ? "Auto" : `#${row.id}`}</strong>
+      <span>${escapeHtml(row.name)}<br><small>${escapeHtml(row.vehicle || "-")} ${escapeHtml(row.plate || "")}</small></span>
+      <span>${escapeHtml(row.status)}</span>
       <span>R$ ${Number(row.total || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-      <button type="button" class="ghost" data-load="${row.id}">Abrir</button>
+      <button type="button" class="ghost" ${row.local ? `data-load-local="${row.local_id}"` : `data-load="${row.id}"`}>Abrir</button>
     </div>
   `).join("");
+}
+
+function applyQuoteData(data) {
+  $("clientName").value = data.client_name || "";
+  $("phone").value = data.phone || "";
+  $("vehicle").value = data.vehicle || "";
+  $("plate").value = data.plate || "";
+  $("taxRate").value = data.tax_rate || "0";
+  $("notes").value = data.notes || $("notes").value;
+  state.status = data.status || "Rascunho";
+  document.querySelectorAll(".status-pill").forEach((button) => {
+    button.classList.toggle("active", button.dataset.status === state.status);
+  });
+  state.items = (data.items || []).map((item) => ({
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    unit_cost: item.unit_cost,
+    discount: item.discount
+  }));
+  invalidateGeneratedPdf();
+  renderItems();
+  preview();
+  $("historyPanel").hidden = true;
 }
 
 async function openHistoryQuote(id) {
   try {
     const data = await api(`/api/history/${id}`);
-    $("clientName").value = data.client_name || "";
-    $("phone").value = data.phone || "";
-    $("vehicle").value = data.vehicle || "";
-    $("plate").value = data.plate || "";
-    $("notes").value = data.notes || $("notes").value;
-    setStatus(data.status || "Rascunho");
-    state.items = data.items.map((item) => ({
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      unit_cost: item.unit_cost,
-      discount: item.discount
-    }));
-    renderItems();
-    preview();
-    $("historyPanel").hidden = true;
+    state.currentQuoteId = Number(id);
+    state.currentLocalId = null;
+    applyQuoteData(data);
+    saveLocalDraft();
+    $("saveStatus").textContent = "Orçamento recuperado";
   } catch (error) {
     toast(error.message);
   }
 }
 
+function openLocalHistoryQuote(id) {
+  const record = state.localHistory.find((row) => row.id === id);
+  if (!record) {
+    toast("Orçamento não encontrado neste aparelho.");
+    return;
+  }
+  state.currentLocalId = record.id;
+  state.currentQuoteId = record.server_id || null;
+  applyQuoteData(record.data);
+  $("saveStatus").textContent = "Orçamento recuperado";
+}
+
+async function showHistory() {
+  $("historyPanel").hidden = false;
+  try {
+    state.serverHistory = await api("/api/history");
+  } catch {
+    // O histórico salvo no aparelho continua disponível sem o servidor.
+  }
+  mergeHistory();
+}
+
 function resetForm() {
+  clearTimeout(autosaveTimer);
+  autosaveQueued = false;
+  state.currentQuoteId = null;
+  state.currentLocalId = null;
   $("clientName").value = "";
   $("phone").value = "";
   $("vehicle").value = "";
@@ -351,6 +541,7 @@ function resetForm() {
   setStatus("Rascunho");
   renderItems();
   preview();
+  $("saveStatus").textContent = "Novo orçamento";
 }
 
 async function backup() {
@@ -366,10 +557,11 @@ async function loadBootstrap() {
   const data = await api("/api/bootstrap");
   state.clients = data.clients || [];
   state.products = data.products || [];
-  state.history = data.history || [];
+  state.serverHistory = data.history || [];
+  state.localHistory = loadLocalHistory();
   fillDatalists();
   updateMetrics(data.metrics);
-  renderHistory();
+  mergeHistory();
 }
 
 document.addEventListener("input", (event) => {
@@ -386,6 +578,7 @@ document.addEventListener("input", (event) => {
     if (totalCell) totalCell.textContent = formatBRL(subtotal);
   }
   preview();
+  scheduleAutosave();
 });
 
 document.addEventListener("click", (event) => {
@@ -399,11 +592,13 @@ document.addEventListener("click", (event) => {
     invalidateGeneratedPdf();
     renderItems();
     preview();
+    scheduleAutosave();
   }
   if (target.dataset.load) openHistoryQuote(target.dataset.load);
+  if (target.dataset.loadLocal) openLocalHistoryQuote(target.dataset.loadLocal);
   const action = target.dataset.action;
   if (action === "new") resetForm();
-  if (action === "history") $("historyPanel").hidden = false;
+  if (action === "history") showHistory();
   if (action === "close-history") $("historyPanel").hidden = true;
   if (action === "report") window.location.href = "/relatorio-mensal";
   if (action === "pdf") generatePdf();
@@ -417,7 +612,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-3");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-4");
 }
 
 loadBootstrap().then(() => {

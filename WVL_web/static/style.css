@@ -122,6 +122,16 @@ nav button { background: #1e293b; color: #f8fafc; border-color: #334155; }
 
 .toolbar h2 { font-size: 32px; margin-top: 4px; }
 .toolbar-copy { color: var(--muted); margin: 7px 0 0; }
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+}
+.save-status::before { content: "●"; font-size: 8px; }
 
 .status-group {
   display: flex;

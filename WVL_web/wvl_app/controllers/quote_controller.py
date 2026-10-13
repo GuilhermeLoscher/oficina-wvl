@@ -42,3 +42,7 @@ class QuoteController:
     def persist_and_render_pdf(self, quote: Quote, include_cover: bool) -> Path:
         self.db.save_quote(quote)
         return self.pdf_engine.render(quote, include_cover=include_cover)
+
+    def persist_and_render_pdf_for_id(self, quote: Quote, include_cover: bool, quote_id: int | None = None) -> tuple[Path, int]:
+        saved_id = self.db.save_quote(quote, quote_id=quote_id)
+        return self.pdf_engine.render(quote, include_cover=include_cover), saved_id

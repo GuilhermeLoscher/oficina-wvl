@@ -31,6 +31,14 @@ def parse_decimal(value: str | int | float | None, fallback: str = "0") -> Decim
         return money(fallback)
 
 
+def parse_quote_id(value) -> int | None:
+    try:
+        parsed = int(value)
+        return parsed if parsed > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
 def quote_payload(data: dict):
     raw_items = data.get("items") or []
     item_rows = []
@@ -98,7 +106,7 @@ def home():
         "index.html",
         statuses=[status.value for status in QuoteStatus],
         metrics=db.dashboard_metrics(),
-        asset_version="20261013-3",
+        asset_version="20261013-4",
     )
 
 
@@ -109,7 +117,7 @@ def bootstrap():
             "metrics": db.dashboard_metrics(),
             "clients": [client.__dict__ for client in db.search_clients("", limit=12)],
             "products": [product.__dict__ | {"unit_price": str(product.unit_price), "unit_cost": str(product.unit_cost)} for product in db.search_products("", limit=12)],
-            "history": db.list_quotes(limit=20),
+            "history": db.list_quotes(limit=500),
             "statuses": [status.value for status in QuoteStatus],
         }
     )
@@ -170,24 +178,46 @@ def create_quote():
         return jsonify({"error": "Inclua pelo menos um item."}), 400
 
     include_cover = bool(data.get("include_cover", True))
-    path = controller.persist_and_render_pdf(quote, include_cover=include_cover)
+    path, quote_id = controller.persist_and_render_pdf_for_id(
+        quote,
+        include_cover=include_cover,
+        quote_id=parse_quote_id(data.get("quote_id")),
+    )
     filename = path.name
     download_url = url_for("download", filename=filename)
     return jsonify(
         {
             "status": "ok",
+            "quote_id": quote_id,
             "quote": quote_json(quote),
             "filename": filename,
             "download_url": download_url,
             "metrics": db.dashboard_metrics(),
-            "history": db.list_quotes(limit=20),
+            "history": db.list_quotes(limit=500),
+        }
+    )
+
+
+@app.post("/api/autosave")
+def autosave_quote():
+    data = request.get_json(force=True)
+    quote = quote_payload(data)
+    if not quote.client.name or not quote.items:
+        return jsonify({"status": "local_only"})
+    quote_id = db.save_quote(quote, quote_id=parse_quote_id(data.get("quote_id")), export=False)
+    return jsonify(
+        {
+            "status": "ok",
+            "quote_id": quote_id,
+            "history": db.list_quotes(limit=500),
+            "metrics": db.dashboard_metrics(),
         }
     )
 
 
 @app.get("/api/history")
 def history():
-    return jsonify(db.list_quotes(limit=100))
+    return jsonify(db.list_quotes(limit=500))
 
 
 @app.get("/api/history/<int:quote_id>")

@@ -55,6 +55,7 @@ class Database:
                     total TEXT NOT NULL,
                     profit TEXT NOT NULL,
                     margin_percent TEXT NOT NULL,
+                    tax_rate TEXT NOT NULL DEFAULT '0.00',
                     notes TEXT NOT NULL,
                     FOREIGN KEY(client_id) REFERENCES clients(id)
                 );
@@ -76,6 +77,19 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_quotes_created_at ON quotes(created_at);
                 """
             )
+            quote_columns = {row[1] for row in conn.execute("PRAGMA table_info(quotes)").fetchall()}
+            if "tax_rate" not in quote_columns:
+                conn.execute("ALTER TABLE quotes ADD COLUMN tax_rate TEXT NOT NULL DEFAULT '0.00'")
+                conn.execute(
+                    """
+                    UPDATE quotes
+                    SET tax_rate = CASE
+                        WHEN CAST(subtotal AS REAL) > 0
+                        THEN CAST((CAST(taxes AS REAL) / CAST(subtotal AS REAL)) * 100 AS TEXT)
+                        ELSE '0.00'
+                    END
+                    """
+                )
             self._seed(conn)
 
     def _seed(self, conn: sqlite3.Connection) -> None:
@@ -137,27 +151,52 @@ class Database:
             )
             return int(conn.execute("SELECT id FROM clients WHERE name = ?", (client.name.strip(),)).fetchone()[0])
 
-    def save_quote(self, quote: Quote) -> int:
+    def save_quote(self, quote: Quote, quote_id: int | None = None, export: bool = True) -> int:
         client_id = self.upsert_client(quote.client)
         with self.connect() as conn:
-            cur = conn.execute(
-                """
-                INSERT INTO quotes(client_id, created_at, status, subtotal, taxes, total, profit, margin_percent, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    client_id,
-                    quote.created_at.isoformat(),
-                    quote.status.value,
-                    str(quote.subtotal),
-                    str(quote.taxes),
-                    str(quote.total),
-                    str(quote.profit),
-                    str(quote.margin_percent),
-                    quote.notes,
-                ),
-            )
-            quote_id = int(cur.lastrowid)
+            exists = quote_id is not None and conn.execute("SELECT 1 FROM quotes WHERE id = ?", (quote_id,)).fetchone()
+            if exists:
+                conn.execute(
+                    """
+                    UPDATE quotes
+                    SET client_id = ?, status = ?, subtotal = ?, taxes = ?, total = ?,
+                        profit = ?, margin_percent = ?, tax_rate = ?, notes = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        client_id,
+                        quote.status.value,
+                        str(quote.subtotal),
+                        str(quote.taxes),
+                        str(quote.total),
+                        str(quote.profit),
+                        str(quote.margin_percent),
+                        str(quote.tax_rate),
+                        quote.notes,
+                        quote_id,
+                    ),
+                )
+                conn.execute("DELETE FROM quote_items WHERE quote_id = ?", (quote_id,))
+            else:
+                cur = conn.execute(
+                    """
+                    INSERT INTO quotes(client_id, created_at, status, subtotal, taxes, total, profit, margin_percent, tax_rate, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        client_id,
+                        quote.created_at.isoformat(),
+                        quote.status.value,
+                        str(quote.subtotal),
+                        str(quote.taxes),
+                        str(quote.total),
+                        str(quote.profit),
+                        str(quote.margin_percent),
+                        str(quote.tax_rate),
+                        quote.notes,
+                    ),
+                )
+                quote_id = int(cur.lastrowid)
             conn.executemany(
                 """
                 INSERT INTO quote_items(quote_id, description, quantity, unit_price, unit_cost, discount, subtotal)
@@ -176,7 +215,8 @@ class Database:
                     for item in quote.items
                 ],
             )
-            self.export_monthly_workbook(conn, quote.created_at.year, quote.created_at.month)
+            if export:
+                self.export_monthly_workbook(conn, quote.created_at.year, quote.created_at.month)
             return quote_id
 
     def upsert_product(self, product: Product) -> int:
@@ -211,7 +251,7 @@ class Database:
         with self.connect() as conn:
             row = conn.execute(
                 """
-                SELECT q.created_at, q.status, q.notes, c.id, c.name, c.phone, c.vehicle, c.plate
+                SELECT q.created_at, q.status, q.tax_rate, q.notes, c.id, c.name, c.phone, c.vehicle, c.plate
                 FROM quotes q
                 JOIN clients c ON c.id = q.client_id
                 WHERE q.id = ?
@@ -232,6 +272,7 @@ class Database:
         quote = Quote(
             client=Client(row["id"], row["name"], row["phone"], row["vehicle"], row["plate"]),
             status=QuoteStatus(row["status"]),
+            tax_rate=Decimal(row["tax_rate"]),
             notes=row["notes"],
         )
         quote.items = [

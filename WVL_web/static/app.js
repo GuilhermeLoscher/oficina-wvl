@@ -3,7 +3,8 @@ const state = {
   items: [],
   clients: [],
   products: [],
-  history: []
+  history: [],
+  generatedPdf: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -164,12 +165,21 @@ async function generatePdf() {
     $("downloadLink").href = data.download_url;
     $("downloadLink").setAttribute("download", data.filename);
     $("downloadLink").classList.remove("disabled");
-    $("whatsappLink").href = data.whatsapp_url;
+    state.generatedPdf = {
+      url: data.download_url,
+      filename: data.filename,
+      file: null
+    };
+    try {
+      state.generatedPdf.file = await fetchPdfFile(data.download_url, data.filename);
+    } catch {
+      // O envio tentara buscar o arquivo novamente quando o usuario clicar.
+    }
     $("whatsappLink").classList.remove("disabled");
     state.history = data.history || state.history;
     updateMetrics(data.metrics);
     renderHistory();
-    toast("PDF gerado. Use Download ou WhatsApp nos botoes abaixo.");
+    toast("PDF gerado. Use Download ou Enviar PDF nos botoes abaixo.");
   } catch (error) {
     toast(error.message);
   } finally {
@@ -178,6 +188,39 @@ async function generatePdf() {
       pdfButton.disabled = false;
       pdfButton.textContent = "Gerar PDF";
     }
+  }
+}
+
+async function fetchPdfFile(url, filename) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error("Nao foi possivel preparar o PDF.");
+  const blob = await response.blob();
+  return new File([blob], filename, { type: "application/pdf" });
+}
+
+async function sharePdf(event) {
+  event.preventDefault();
+  const link = $("whatsappLink");
+  if (link.classList.contains("disabled") || !state.generatedPdf) return;
+
+  try {
+    toast("Preparando PDF para envio...");
+    const generated = state.generatedPdf;
+    const file = generated.file || await fetchPdfFile(generated.url, generated.filename);
+    generated.file = file;
+
+    if (!navigator.share || !navigator.canShare || !navigator.canShare({ files: [file] })) {
+      throw new Error("Este navegador nao permite enviar o PDF diretamente. Use o botao Download e anexe o arquivo no WhatsApp.");
+    }
+
+    await navigator.share({
+      files: [file],
+      title: generated.filename,
+      text: "Orcamento WVL"
+    });
+  } catch (error) {
+    if (error && error.name === "AbortError") return;
+    toast(error.message || "Nao foi possivel enviar o PDF.");
   }
 }
 
@@ -270,6 +313,7 @@ function resetForm() {
   $("pdfStatus").textContent = "Nenhum PDF gerado nesta sessao.";
   $("downloadLink").classList.add("disabled");
   $("whatsappLink").classList.add("disabled");
+  state.generatedPdf = null;
   state.items = [];
   setStatus("Rascunho");
   addEmptyItem();
@@ -311,6 +355,7 @@ document.addEventListener("click", (event) => {
   const target = event.target.closest("button, a");
   if (!target) return;
   if (target.id === "downloadLink") downloadPdf(event);
+  if (target.id === "whatsappLink") sharePdf(event);
   if (target.dataset.status) setStatus(target.dataset.status);
   if (target.dataset.remove) {
     state.items.splice(Number(target.dataset.remove), 1);
@@ -334,7 +379,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20260618-5");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-1");
 }
 
 loadBootstrap().then(() => {

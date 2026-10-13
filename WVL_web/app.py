@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from urllib.parse import quote_plus
 
 from flask import Flask, jsonify, render_template, request, send_file, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -99,7 +98,7 @@ def home():
         "index.html",
         statuses=[status.value for status in QuoteStatus],
         metrics=db.dashboard_metrics(),
-        asset_version="20260618-5",
+        asset_version="20261013-1",
     )
 
 
@@ -174,23 +173,12 @@ def create_quote():
     path = controller.persist_and_render_pdf(quote, include_cover=include_cover)
     filename = path.name
     download_url = url_for("download", filename=filename)
-    absolute_download_url = url_for("download", filename=filename, _external=True)
-    phone = "".join(ch for ch in quote.client.phone if ch.isdigit())
-    if phone and not phone.startswith("55"):
-        phone = "55" + phone
-    message = quote_plus(
-        f"Ola, {quote.client.name}! Segue o orcamento WVL. "
-        f"Total: {format_money(quote.total)}. Baixe o PDF aqui: {absolute_download_url}"
-    )
-    whatsapp = f"https://wa.me/{phone}?text={message}" if phone else f"https://wa.me/?text={message}"
     return jsonify(
         {
             "status": "ok",
             "quote": quote_json(quote),
             "filename": filename,
             "download_url": download_url,
-            "absolute_download_url": absolute_download_url,
-            "whatsapp_url": whatsapp,
             "metrics": db.dashboard_metrics(),
             "history": db.list_quotes(limit=20),
         }

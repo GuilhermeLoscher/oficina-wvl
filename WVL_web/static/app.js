@@ -322,7 +322,8 @@ async function generatePdf() {
     state.generatedPdf = {
       url: data.download_url,
       filename: data.filename,
-      file: null
+      file: null,
+      downloaded: false
     };
     try {
       state.generatedPdf.file = await fetchPdfFile(data.download_url, data.filename);
@@ -354,6 +355,17 @@ async function fetchPdfFile(url, filename) {
   return new File([blob], filename, { type: "application/pdf" });
 }
 
+function savePdfCopy(url, filename) {
+  const tempLink = document.createElement("a");
+  tempLink.href = url;
+  tempLink.download = filename;
+  tempLink.target = "_blank";
+  tempLink.style.display = "none";
+  document.body.appendChild(tempLink);
+  tempLink.click();
+  tempLink.remove();
+}
+
 async function sharePdf(event) {
   event.preventDefault();
   const trigger = event.target.closest("button, a");
@@ -377,8 +389,14 @@ async function sharePdf(event) {
     const file = generated.file || await fetchPdfFile(generated.url, generated.filename);
     generated.file = file;
 
+    if (!generated.downloaded) {
+      savePdfCopy(generated.url, generated.filename);
+      generated.downloaded = true;
+      toast("Cópia do PDF baixada. Abrindo o envio...");
+    }
+
     if (!navigator.share || !navigator.canShare || !navigator.canShare({ files: [file] })) {
-      throw new Error("Este navegador nao permite enviar o PDF diretamente. Use o botao Download e anexe o arquivo no WhatsApp.");
+      throw new Error("A cópia foi baixada. Abra o WhatsApp e anexe o PDF salvo no aparelho.");
     }
 
     await navigator.share({
@@ -389,7 +407,7 @@ async function sharePdf(event) {
   } catch (error) {
     if (error && error.name === "AbortError") return;
     if (error && error.name === "NotAllowedError" && state.generatedPdf) {
-      toast("PDF pronto. Toque novamente em Enviar PDF para compartilhar.");
+      toast("PDF baixado. Toque novamente em Enviar PDF para compartilhar.");
       return;
     }
     toast(error.message || "Nao foi possivel enviar o PDF.");
@@ -601,7 +619,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-5");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-7");
 }
 
 loadBootstrap().then(() => {

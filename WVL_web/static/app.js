@@ -27,6 +27,13 @@ function toast(message) {
   box.timer = setTimeout(() => { box.hidden = true; }, 3600);
 }
 
+function invalidateGeneratedPdf() {
+  state.generatedPdf = null;
+  $("pdfStatus").textContent = "O PDF sera gerado ao enviar ou pelo botao Gerar PDF.";
+  $("downloadLink").href = "#";
+  $("downloadLink").classList.add("disabled");
+}
+
 function payload() {
   return {
     client_name: $("clientName").value.trim(),
@@ -52,6 +59,7 @@ async function api(path, options = {}) {
 }
 
 function setStatus(status) {
+  if (state.status !== status) invalidateGeneratedPdf();
   state.status = status;
   document.querySelectorAll(".status-pill").forEach((button) => {
     button.classList.toggle("active", button.dataset.status === status);
@@ -98,6 +106,7 @@ function addItem(kind) {
     unit_cost: costEl.value || "0",
     discount: "0"
   });
+  invalidateGeneratedPdf();
   descEl.value = "";
   priceEl.value = "";
   costEl.value = "";
@@ -107,6 +116,7 @@ function addItem(kind) {
 
 function addEmptyItem() {
   state.items.push({ description: "", quantity: "1", unit_price: "0", unit_cost: "0", discount: "0" });
+  invalidateGeneratedPdf();
   renderItems();
 }
 
@@ -175,13 +185,14 @@ async function generatePdf() {
     } catch {
       // O envio tentara buscar o arquivo novamente quando o usuario clicar.
     }
-    $("whatsappLink").classList.remove("disabled");
     state.history = data.history || state.history;
     updateMetrics(data.metrics);
     renderHistory();
     toast("PDF gerado. Use Download ou Enviar PDF nos botoes abaixo.");
+    return state.generatedPdf;
   } catch (error) {
     toast(error.message);
+    return null;
   } finally {
     const pdfButton = document.querySelector('[data-action="pdf"]');
     if (pdfButton) {
@@ -201,11 +212,23 @@ async function fetchPdfFile(url, filename) {
 async function sharePdf(event) {
   event.preventDefault();
   const link = $("whatsappLink");
-  if (link.classList.contains("disabled") || !state.generatedPdf) return;
+  if (link.dataset.busy === "true") return;
+
+  link.dataset.busy = "true";
+  link.classList.add("disabled");
+  const originalText = link.textContent;
 
   try {
+    let generated = state.generatedPdf;
+    if (!generated) {
+      link.textContent = "Gerando PDF...";
+      toast("Gerando PDF para envio...");
+      generated = await generatePdf();
+      if (!generated) return;
+    }
+
+    link.textContent = "Preparando envio...";
     toast("Preparando PDF para envio...");
-    const generated = state.generatedPdf;
     const file = generated.file || await fetchPdfFile(generated.url, generated.filename);
     generated.file = file;
 
@@ -220,7 +243,15 @@ async function sharePdf(event) {
     });
   } catch (error) {
     if (error && error.name === "AbortError") return;
+    if (error && error.name === "NotAllowedError" && state.generatedPdf) {
+      toast("PDF pronto. Toque novamente em Enviar PDF para compartilhar.");
+      return;
+    }
     toast(error.message || "Nao foi possivel enviar o PDF.");
+  } finally {
+    link.dataset.busy = "false";
+    link.classList.remove("disabled");
+    link.textContent = originalText;
   }
 }
 
@@ -310,10 +341,7 @@ function resetForm() {
   $("taxRate").value = "0";
   $("notes").value = "Validade da proposta: 7 dias. Pagamento conforme combinado. Pecas sujeitas a disponibilidade.";
   $("includeCover").checked = true;
-  $("pdfStatus").textContent = "Nenhum PDF gerado nesta sessao.";
-  $("downloadLink").classList.add("disabled");
-  $("whatsappLink").classList.add("disabled");
-  state.generatedPdf = null;
+  invalidateGeneratedPdf();
   state.items = [];
   setStatus("Rascunho");
   addEmptyItem();
@@ -341,6 +369,10 @@ async function loadBootstrap() {
 
 document.addEventListener("input", (event) => {
   const target = event.target;
+  const quoteFields = ["clientName", "phone", "vehicle", "plate", "taxRate", "notes", "includeCover"];
+  if ((target.dataset && target.dataset.field) || quoteFields.includes(target.id)) {
+    invalidateGeneratedPdf();
+  }
   if (target.dataset && target.dataset.field) {
     const item = state.items[Number(target.dataset.index)];
     item[target.dataset.field] = target.value;
@@ -359,6 +391,7 @@ document.addEventListener("click", (event) => {
   if (target.dataset.status) setStatus(target.dataset.status);
   if (target.dataset.remove) {
     state.items.splice(Number(target.dataset.remove), 1);
+    invalidateGeneratedPdf();
     renderItems();
     preview();
   }
@@ -379,7 +412,7 @@ $("clientName").addEventListener("change", fillClientByName);
 $("productSearch").addEventListener("change", fillProductByName);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-1");
+  navigator.serviceWorker.register("/static/service-worker.js?v=20261013-2");
 }
 
 loadBootstrap().then(() => {
